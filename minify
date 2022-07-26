@@ -1,0 +1,29 @@
+#!/bin/bash
+#-*-bash-*-#############################################################################################################
+# Inesonic SpeedSentry - Site Performance Monitoring For Wordpress
+#
+# Copyright 2021, Inesonic, LLC
+#
+# This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
+# License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+# warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with this program.  If not, see
+# <https://www.gnu.org/licenses/>.
+########################################################################################################################
+# Small shell script the locates and minimizes both JavaScript and CSS, renaming files to include a .min.js suffix.
+#
+
+for INPUT_FILE in `find . -name \*.js | grep -v '.min.js$'` `find . -name \*.css | grep -v '.min.css$'`;
+do
+  OUTPUT_FILE=`echo "${INPUT_FILE}" | sed -e 's/\.js$/.min.js/' -e 's/\.css$/.min.css/'`
+  if ! yui-compressor ${INPUT_FILE} -o ${OUTPUT_FILE};
+  then
+    echo "*** Failed to minimize ${INPUT_FILE}"
+  else
+    echo "Minimized ${INPUT_FILE} -> ${OUTPUT_FILE}"
+  fi
+done

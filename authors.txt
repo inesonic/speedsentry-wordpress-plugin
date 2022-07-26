@@ -1,0 +1,5 @@
+The following individuals have contributed to the development of this WordPress
+plug-in:
+
+Paul H. Smith (paul dot h dot smith at inesonic dot com)
+Nanlun Li (nankun dot li at inesonic dot com)
