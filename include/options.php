@@ -16,37 +16,116 @@
  */
 
 namespace Inesonic\SpeedSentry;
+
+    require_once ABSPATH . 'wp-admin/includes/plugin.php';
+
     /**
      * Trivial class that provides an API to plug-in specific options.
      */
     class Options {
         /**
-         * Static method that is triggered when the plug-in is activated.
+         * Name of the preferred primary plug-in.
          */
-        public function plugin_activated() {}
-
-        /**
-         * Static method that is triggered when the plug-in is deactivated.
-         */
-        public function plugin_deactivated() {}
-
-        /**
-         * Static method that is triggered when the plug-in is uninstalled.
-         */
-        public function plugin_uninstalled() {
-            $this->delete_option('version');
-            $this->delete_option('temporary_secret');
-            $this->delete_option('rest_api_secret_v1');
-            $this->delete_option('customer_identifier');
-        }
-
+        const PREFERRED_PLUGIN = "inesonic-speedsentry";
+        
         /**
          * Constructor
          *
          * \param $options_prefix The options prefix to apply to plug-in specific options.
+         *
+         * \param $plugin_name    A name used to identify the plug-in.
          */
-        public function __construct(string $options_prefix) {
+        public function __construct(string $options_prefix, string $plugin_name) {
             $this->options_prefix = $options_prefix . '_';
+            $this->plugin_name = $plugin_name;
+        }
+
+        /**
+         * Method that is triggered when the plug-in is activated.
+         */
+        public function plugin_activated() {
+            $this->identify_primary_plugin($this->plugin_name, false);
+        }
+
+        /**
+         * Method that is triggered when the plug-in is deactivated.
+         */
+        public function plugin_deactivated() {
+            $this->identify_primary_plugin($this->plugin_name, true);
+        }
+        
+        /**
+         * Method that is triggered when the plug-in is uninstalled.
+         */
+        public function plugin_uninstalled() {
+            $plugins_str = $this->get_option('plugins', null);
+            
+            if ($plugins_str === null) {
+                $plugins_list = array($this->plugin_name);
+            } else {
+                $plugins_list = explode(',', $plugins_str);
+            }
+
+            $index = array_search($this->plugin_name, $plugins_list);
+            if ($index !== false) {
+                unset($plugins_list[$index]);
+            }
+
+            if (empty($plugins_list)) {
+                $this->delete_option('plugins');
+
+                $this->delete_option('temporary_secret');
+                $this->delete_option('rest_api_secret_v1');
+                $this->delete_option('customer_identifier');
+            } else {
+                $this->update_option('plugins', implode(',', $plugins_list));
+            }
+
+            $this->addtional_plugin_uninstalled();
+        }
+
+        /**
+         * Method that is triggered to perform additional uninstallation steps.
+         */
+        public function additional_plugin_uninstalled() {}
+
+        /**
+         * Method that obtains a list of installed Inesonic plug-ins.
+         *
+         * \return Returns a list of all installed Inesonic plug-ins.
+         */
+        public function installed_plugins() {
+            $plugins_str = $this->get_option('plugins', null);
+            if ($plugins_str === null) {
+                $this->update_option('plugins', $this->plugin_name);
+                $plugins_list = array($this->plugin_name);
+            } else {
+                $plugins_list = explode(',', $plugins_str);
+
+                if (!in_array($this->plugin_name, $plugins_list)) {
+                    $plugins_list[] = $this->plugin_name;
+                    $this->update_option('plugins', implode(',', $plugins_list));
+                }
+            }
+
+            return $plugins_list;
+        }
+
+        /**
+         * Method that obtains a list of installed and active Inesonic plug-ins.
+         *
+         * \return Returns a list of all installed and active Inesonic plug-ins.
+         */
+        public function active_plugins() {
+            $installed_plugins = $this->installed_plugins();
+            foreach ($installed_plugins as $plugin_name) {
+                $plugin_main_file = $plugin_name . DIRECTORY_SEPARATOR . $plugin_name . ".php";
+                if (is_plugin_active($plugin_main_file)) {
+                    $result[] = $plugin_name;
+                }
+            }
+
+            return $result;
         }
 
         /**
@@ -68,23 +147,13 @@ namespace Inesonic\SpeedSentry;
         }
 
         /**
-         * Method you can use to obtain the current plugin version.
+         * Method you can use to obtain the current primary plugin.
          *
-         * \return Returns the current plugin version.  Returns null if the version has not been set.
+         * \return Returns a string holding the name of the current primary plugin.  The value null is returned if
+         *         there is no primary plugin.
          */
-        public function version() {
-            return $this->get_option('version', null);
-        }
-
-        /**
-         * Method you can use to set the current plugin version.
-         *
-         * \param $version The desired plugin version.
-         *
-         * \return Returns true on success.  Returns false on error.
-         */
-        public function set_version(string $version) {
-            return $this->update_option('version', $version);
+        public function primary_plugin() {
+            return $this->get_option('primary_plugin', null);
         }
 
         /**
@@ -173,7 +242,7 @@ namespace Inesonic\SpeedSentry;
          * \return Returns the option content.  A value of false is returned if the option value has not been set and
          *         the default value is not provided.
          */
-        private function get_option(string $option, $default = false) {
+        protected function get_option(string $option, $default = false) {
             return \get_option($this->options_prefix . $option, $default);
         }
 
@@ -187,7 +256,7 @@ namespace Inesonic\SpeedSentry;
          *
          * \return Returns true on success.  Returns false on error.
          */
-        private function update_option(string $option, $value = '') {
+        protected function update_option(string $option, $value = '') {
             return \update_option($this->options_prefix . $option, $value);
         }
 
@@ -199,7 +268,39 @@ namespace Inesonic\SpeedSentry;
          *
          * \return Returns true on success.  Returns false on error.
          */
-        private function delete_option(string $option) {
+        protected function delete_option(string $option) {
             return \delete_option($this->options_prefix . $option);
+        }
+
+        /**
+         * Method that determines which plug-in should be the primary plug-in.
+         *
+         * \param $plugin The name of the plug-in we're actively modifying.
+         *
+         * \param $now_deactivating If true, then the plugin is being deactivated.  If false, then the plugin is being
+         *        activated.
+         */
+        private function identify_primary_plugin(string $plugin, bool $now_deactivating) {
+            $installed_plugins = $this->installed_plugins();
+            foreach ($installed_plugins as $plugin_name) {
+                if ($plugin == $plugin_name) {
+                    if (!$now_deactivating) {
+                        $active_plugins[] = $plugin_name;
+                    }
+                } else {
+                    $plugin_main_file = $plugin_name . DIRECTORY_SEPARATOR . $plugin_name . ".php";
+                    if (is_plugin_active($plugin_main_file)) {
+                        $active_plugins[] = $plugin_name;
+                    }
+                }
+            }
+
+            if (in_array(self::PREFERRED_PLUGIN, $active_plugins)) {
+                $this->update_option('primary_plugin', self::PREFERRED_PLUGIN);
+            } else if (count($active_plugins) > 0) {
+                $this->update_option('primary_plugin', $active_plugins[0]);
+            } else {
+                $this->delete_option('primary_plugin');
+            }
         }
     }

@@ -16,9 +16,6 @@
  */
 
 namespace Inesonic\SpeedSentry;
-    require_once dirname(__FILE__) . '/helpers.php';
-    require_once dirname(__FILE__) . '/options.php';
-    require_once dirname(__FILE__) . '/rest-api-v1.php';
 
     /**
      * Class that provides functions and support to simplify the customer sign-up process.   The signup process
@@ -72,7 +69,7 @@ namespace Inesonic\SpeedSentry;
      *                                            block future calls into the REST
      *                                            API.
      */
-    class SignupHandler {
+    class SignupHandler extends Helpers {
         /**
          * The required length of the NONCE, in bytes.  The nonce needs to be usable in a query string.
          */
@@ -128,15 +125,15 @@ namespace Inesonic\SpeedSentry;
          * \param $rest_api              The outbound REST API to be updated.
          */
         public function __construct(
-                string              $rest_namespace,
-                string              $signup_url,
-                string              $login_url,
-                string              $registration_webhook,
-                int                 $rest_api_version,
-                string              $completed_anchor_text,
-                string              $completed_anchor_url,
-                Options             $options,
-                \Inesonic\RestApiV1 $rest_api
+                string    $rest_namespace,
+                string    $signup_url,
+                string    $login_url,
+                string    $registration_webhook,
+                int       $rest_api_version,
+                string    $completed_anchor_text,
+                string    $completed_anchor_url,
+                Options   $options,
+                RestApiV1 $rest_api
             ) {
             $this->rest_namespace = $rest_namespace;
             $this->signup_url = $signup_url;
@@ -249,11 +246,11 @@ namespace Inesonic\SpeedSentry;
          */
         public function signup_anchor_tag(string $content, string $classes = "") {
             if ($classes == "") {
-                $result = "<a id=\"" . self::signup_id() . "\" href=\"#inesonic-speedsentry-invalid\">" .
+                $result = "<a id=\"" . esc_attr(self::signup_id()) . "\" href=\"#inesonic-speedsentry-invalid\">" .
                               $content .
                           "</a>";
             } else {
-                $result = "<a id=\"" . self::signup_id() . "\" " .
+                $result = "<a id=\"" . esc_attr(self::signup_id()) . "\" " .
                              "class=\"" . $classes . "\" " .
                              "href=\"#inesonic-speedsentry-invalid\">" .
                               $content .
@@ -270,7 +267,7 @@ namespace Inesonic\SpeedSentry;
             wp_enqueue_script('jquery');
             wp_enqueue_script(
                 'inesonic-speedsentry-signup-handler',
-                \Inesonic\javascript_url('signup-handler'),
+                self::javascript_url('signup-handler', false),
                 array('jquery'),
                 null,
                 true

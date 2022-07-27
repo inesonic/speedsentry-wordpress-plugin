@@ -1,10 +1,9 @@
 <?php
 /**
  * Plugin Name:       Inesonic SpeedSentry
- * Plugin URI:        http://speed-sentry.com
  * Description:       Site uptime and performance monitoring for WordPress.
- * Version:           1e
- * Author: Inesonic,  LLC
+ * Version:           1.7
+ * Author:            Inesonic,  LLC
  * Author URI:        http://speed-sentry.com
  * License:           GPLv3 and LGPLv3
  * License URI:       https://downloads.inesonic.com/speedsentry_plugin_license.txt
@@ -15,7 +14,7 @@
  ***********************************************************************************************************************
  * Inesonic SpeedSentry - Site Performance Monitoring For Wordpress
  *
- * Copyright 2021, Inesonic, LLC
+ * Copyright 2021-2022, Inesonic, LLC
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
  * License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later
@@ -33,14 +32,6 @@
  * Main plug-in file.
  */
 
-require_once dirname(__FILE__) . '/include/rest-api-v1.php';
-require_once dirname(__FILE__) . '/include/options.php';
-require_once dirname(__FILE__) . '/include/capabilities.php';
-require_once dirname(__FILE__) . '/include/signup-handler.php';
-require_once dirname(__FILE__) . '/include/menus.php';
-require_once dirname(__FILE__) . '/include/plugin-page.php';
-require_once dirname(__FILE__) . '/include/admin-bar.php';
-
 /**
  * Main class for the SpeedSentry plug-in.  This class does the work needed to instantiate the plug-in within the larger
  * WordPress application.  Note that this file contains the only content not containing within the Inesonic\SpeedSentry
@@ -50,12 +41,7 @@ class InesonicSpeedSentry {
     /**
      * Plug-in version.
      */
-    const VERSION = '1e';
-
-    /**
-     * Plug-in slug.
-     */
-    const SLUG = 'inesonic-speedsentry';
+    const VERSION = '1.7';
 
     /**
      * The REST API namespace.
@@ -83,10 +69,20 @@ class InesonicSpeedSentry {
     const AUTHOR = 'Inesonic, LLC';
 
     /**
-     * Plug-in prefix.
+     * Class name.
      */
-    const PREFIX = 'InesonicSpeedSentry';
+    const CLASS_NAME = 'InesonicSpeedSentry';
 
+    /**
+     * The namespace that we need to perform auto-loading for.
+     */
+    const PLUGIN_NAMESPACE = 'Inesonic\\SpeedSentry\\';
+
+    /**
+     * The plug-in include path.
+     */
+    const INCLUDE_PATH = __DIR__ . '/include/';
+    
     /**
      * Options prefix.
      */
@@ -130,7 +126,7 @@ class InesonicSpeedSentry {
     /**
      * The maximum supported WordPress version.
      */
-    const MAXIMUM_WORDPRESS_VERSION = '5.8.3';
+    const MAXIMUM_WORDPRESS_VERSION = '5.9';
 
     /**
      * Array of required PHP modules.
@@ -147,7 +143,10 @@ class InesonicSpeedSentry {
      */
     public static $url = '';
 
-    private static $instance;  /* Plug-in instance */
+    /**
+     * Plug-in instance.
+     */
+    private static $instance;
 
     /**
      * Static method we use to create a single private instance of this plug-in.
@@ -156,11 +155,11 @@ class InesonicSpeedSentry {
      */
     public static function instance() {
         if (!isset(self::$instance) || !(self::$instance instanceof InesonicSpeedSentry)) {
+            spl_autoload_register(array(self::class, 'autoloader'));
+            
             self::$instance = new InesonicSpeedSentry();
             self::$dir      = plugin_dir_path(__FILE__);
             self::$url      = plugin_dir_url(__FILE__);
-
-            spl_autoload_register(array(self::$instance, 'autoloader'));
         }
 
         return self::$instance;
@@ -170,20 +169,23 @@ class InesonicSpeedSentry {
      * Constructor
      */
     public function __construct() {
-        $this->options = new Inesonic\SpeedSentry\Options(self::OPTIONS_PREFIX);
+        $slug = dirname(plugin_basename(__FILE__));            
+        $this->options = new Inesonic\SpeedSentry\Options(self::OPTIONS_PREFIX, $slug);
 
         $customer_identifier = $this->options->customer_identifier();
         $rest_api_secret = $this->options->rest_api_secret_v1();
 
-        $this->rest_api_v1 = new \Inesonic\RestApiV1(
+        $this->rest_api_v1 = new \Inesonic\SpeedSentry\RestApiV1(
             $customer_identifier === null ? "" : $customer_identifier,
             $rest_api_secret === null ? "" : $rest_api_secret,
-            \get_option(Inesonic\RestApiV1::TIME_DELTA_OPTION, 0)
+            \get_option(Inesonic\SpeedSentry\RestApiV1::TIME_DELTA_OPTION, 0)
         );
         $this->rest_api_v1->setTimeDeltaCallback('update_option');
 
+        $installed_plugins = $this->options->installed_plugins();
+
         $this->signup_handler = new Inesonic\SpeedSentry\SignupHandler(
-            self::REST_API_NAMESPACE,
+            self::REST_API_NAMESPACE, 
             self::SIGNUP_URL,
             self::LOGIN_URL,
             self::REGISTRATION_WEBHOOK,
@@ -194,34 +196,42 @@ class InesonicSpeedSentry {
             $this->rest_api_v1
         );
 
-        $this->capabilities = new Inesonic\SpeedSentry\Capabilities(
+        $this->specialization = new Inesonic\SpeedSentry\Specialization(
+            self::SHORT_NAME,
+            self::NAME,
+            $slug,
+            self::LOGIN_URL,
             $this->rest_api_v1,
+            $this->options,
             $this->signup_handler
         );
 
-        $this->admin_menus = new Inesonic\SpeedSentry\Menus(
-            self::SHORT_NAME,
-            self::NAME,
-            self::SLUG,
-            $this->rest_api_v1,
-            $this->signup_handler
-        );
+        $primary_plugin = $this->options->primary_plugin();
+        $is_primary_plugin = $primary_plugin == $slug;
+        if ($is_primary_plugin) {
+            $this->capabilities = new Inesonic\SpeedSentry\Capabilities(
+                $this->rest_api_v1,
+                $this->signup_handler
+            );
+    
+            $this->admin_menus = new Inesonic\SpeedSentry\Menus(
+                self::SHORT_NAME,
+                self::NAME,
+                $slug,
+                $this->options,
+                $this->signup_handler
+            );
+        }
 
         $this->plugin_page = new Inesonic\SpeedSentry\PlugInsPage(
             plugin_basename(__FILE__),
             self::NAME,
+            $slug,
             self::SPEED_SENTRY_SITE_NAME,
-            self::LOGIN_URL,
-            $this->options,
-            $this->signup_handler
-        );
-
-        $this->admin_bar = new Inesonic\SpeedSentry\AdminBar(
-            $this->options,
             $this->signup_handler,
-            $this->rest_api_v1
+            $is_primary_plugin
         );
-
+        
         add_action('init', array($this, 'on_initialization'));
     }
 
@@ -230,14 +240,35 @@ class InesonicSpeedSentry {
      *
      * \param[in] class_name The name of this class.
      */
-    public function autoloader($class_name) {
-        if (!class_exists($class_name) and (FALSE !== strpos($class_name, self::PREFIX))) {
-            $class_name = str_replace(self::PREFIX, '', $class_name);
-            $classes_dir = realpath(plugin_dir_path(__FILE__)) . DIRECTORY_SEPARATOR . 'includes' . DIRECTORY_SEPARATOR;
-            $class_file = str_replace('_', DIRECTORY_SEPARATOR, $class_name) . '.php';
+    static public function autoloader($class_name) {
+        if (!class_exists($class_name) && str_starts_with($class_name, self::PLUGIN_NAMESPACE)) {
+            $class_basename = str_replace(self::PLUGIN_NAMESPACE, '', $class_name);
+            $last_was_lower = false;
+            $filename = "";
+            for ($i=0 ; $i<strlen($class_basename) ; ++$i) {
+                $c = $class_basename[$i];
+                if (ctype_upper($c)) {
+                    if ($last_was_lower) {
+                        $filename .= '-' . strtolower($c); 
+                        $last_was_lower = false;
+                    } else {
+                        $filename .= strtolower($c);
+                    }
+                } else {
+                    $filename .= $c;
+                    $last_was_lower = true;
+                }
+            }
 
-            if (file_exists($classes_dir . $class_file)) {
-                require_once $classes_dir . $class_file;
+            $filename .= '.php';
+            $filepath = self::INCLUDE_PATH . $filename;
+            if (file_exists($filepath)) {
+                include $filepath;
+            } else {
+                $filepath = __DIR__ . DIRECTORY_SEPARATOR . $filename;
+                if (file_exists($filepath)) {
+                    include $filepath;
+                }
             }
         }
     }
@@ -247,17 +278,16 @@ class InesonicSpeedSentry {
      */
     public static function plugin_activated() {
         if (defined('ABSPATH') && current_user_can('activate_plugins')) {
-            $plugin = isset($_REQUEST['plugin']) ? $_REQUEST['plugin'] : '';
+            $plugin = isset($_REQUEST['plugin']) ? sanitize_text_field($_REQUEST['plugin']) : '';
             if (check_admin_referer('activate-plugin_' . $plugin)) {
-                $options = new Inesonic\SpeedSentry\Options(self::OPTIONS_PREFIX);
+                $slug = dirname(plugin_basename(__FILE__));            
+                $options = new Inesonic\SpeedSentry\Options(self::OPTIONS_PREFIX, $slug);
 
                 Inesonic\SpeedSentry\Menus::plugin_activated($options);
                 Inesonic\SpeedSentry\PlugInsPage::plugin_activated($options);
                 Inesonic\SpeedSentry\AdminBar::plugin_activated($options);
 
-                // Last thing we do is set the version.
                 $options->plugin_activated();
-                $options->set_version(self::VERSION);
             }
         }
     }
@@ -267,9 +297,10 @@ class InesonicSpeedSentry {
      */
     public static function plugin_deactivated() {
         if (defined('ABSPATH') && current_user_can('activate_plugins')) {
-            $plugin = isset($_REQUEST['plugin']) ? $_REQUEST['plugin'] : '';
+            $plugin = isset($_REQUEST['plugin']) ? sanitize_text_field($_REQUEST['plugin']) : '';
             if (check_admin_referer('deactivate-plugin_' . $plugin)) {
-                $options = new Inesonic\SpeedSentry\Options(self::OPTIONS_PREFIX);
+                $slug = dirname(plugin_basename(__FILE__));            
+                $options = new Inesonic\SpeedSentry\Options(self::OPTIONS_PREFIX, $slug);
 
                 Inesonic\SpeedSentry\Menus::plugin_deactivated($options);
                 Inesonic\SpeedSentry\PlugInsPage::plugin_deactivated($options);
@@ -393,9 +424,5 @@ class InesonicSpeedSentry {
 InesonicSpeedSentry::instance();
 
 /* Define critical global hooks. */
-register_activation_hook(__FILE__, array('InesonicSpeedSentry', 'plugin_activated'));
-register_deactivation_hook(__FILE__, array('InesonicSpeedSentry', 'plugin_deactivated'));
-
-if (!empty($GLOBALS['pagenow']) && 'plugins.php' === $GLOBALS['pagenow']) {
-    add_action('admin_notices', array('InesonicSpeedSentry', 'check_administrative_notices'), 0);
-}
+register_activation_hook(__FILE__, array(InesonicSpeedSentry::class, 'plugin_activated'));
+register_deactivation_hook(__FILE__, array(InesonicSpeedSentry::class, 'plugin_deactivated'));

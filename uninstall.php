@@ -17,12 +17,79 @@
  ***********************************************************************************************************************
  * \file uninstall.php
  *
- * Performs actions needed to cleanup WordPress if/when this plug-in is removed.
+ * Uninstaller.
  */
 
-require_once dirname(__FILE__) . '/include/options.php';
+/**
+ * Small class that uninstalls this plug-in.  Coded as a class to help manage the use of the SPL autoloader.
+ */
+class InesonicUninstaller {
+    /**
+     * The namespace that we need to perform auto-loading for.
+     */
+    const PLUGIN_NAMESPACE = 'Inesonic\\SpeedSentry\\';
+
+    /**
+     * The plug-in include path.
+     */
+    const INCLUDE_PATH = __DIR__ . '/include/';
+    
+    /**
+     * Options prefix.
+     */
+    const OPTIONS_PREFIX = 'inesonic_speedsentry';
+
+    /**
+     * Static method triggered to uninstall this plug-in.
+     */
+    public static function uninstall() {
+        spl_autoload_register(array(self::class, 'autoloader'));
+            
+        $slug = dirname(plugin_basename(__FILE__));            
+        $options = new Inesonic\SpeedSentry\Options(self::OPTIONS_PREFIX, $slug);
+        $options->plugin_uninstalled();
+    }
+
+    /**
+     * Constructor
+     */
+    public function __construct() {
+    }
+
+    /**
+     * Autoloader callback.
+     *
+     * \param[in] class_name The name of this class.
+     */
+    static public function autoloader($class_name) {
+        if (!class_exists($class_name) && str_starts_with($class_name, self::PLUGIN_NAMESPACE)) { 
+            $class_basename = str_replace(self::PLUGIN_NAMESPACE, '', $class_name);
+            $filepath = self::INCLUDE_PATH;
+            $last_was_lower = false;
+            for ($i=0 ; $i<strlen($class_basename) ; ++$i) {
+                $c = $class_basename[$i];
+                if (ctype_upper($c)) {
+                    if ($last_was_lower) {
+                        $filepath .= '-' . strtolower($c);
+                        $last_was_lower = false;
+                    } else {
+                        $filepath .= strtolower($c);
+                    }
+                } else {
+                    $filepath .= $c;
+                    $last_was_lower = true;
+                }
+            }
+
+            $filepath .= '.php';
+
+            if (file_exists($filepath)) {
+                include $filepath;
+            }
+        }
+    }
+};
 
 if (defined('WP_UNINSTALL_PLUGIN')) {
-    $options = new Inesonic\SpeedSentry\Options('inesonic_speedsentry');
-    $options->plugin_uninstalled();
+    InesonicUninstaller::uninstall();
 }

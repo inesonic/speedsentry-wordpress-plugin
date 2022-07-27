@@ -16,15 +16,11 @@
  */
 
 namespace Inesonic\SpeedSentry;
-    require_once dirname(__FILE__) . '/helpers.php';
-    require_once dirname(__FILE__) . '/signup-handler.php';
-    require_once dirname(__FILE__) . '/options.php';
-    require_once dirname(__FILE__) . '/rest-api-v1.php';
 
     /**
      * Class that manages options displayed within the WordPress Admin bar.
      */
-    class AdminBar {
+    class AdminBar extends Helpers {
         /**
          * Static method that is triggered when the plug-in is activated.
          *
@@ -49,9 +45,9 @@ namespace Inesonic\SpeedSentry;
          * \param $rest_api       The outbound REST API.
          */
         public function __construct(
-                Options             $options,
-                SignupHandler       $signup_handler,
-                \Inesonic\RestApiV1 $rest_api
+                Options       $options,
+                SignupHandler $signup_handler,
+                RestApiV1     $rest_api
 
             ) {
             $this->options = $options;
@@ -80,7 +76,7 @@ namespace Inesonic\SpeedSentry;
             wp_enqueue_script('jquery');
             wp_enqueue_script(
                 'inesonic-speedsentry-maintenance-mode-control',
-                \Inesonic\javascript_url('maintenance-mode-control'),
+                self::javascript_url('maintenance-mode-control', false),
                 array('jquery'),
                 null,
                 true
@@ -95,7 +91,7 @@ namespace Inesonic\SpeedSentry;
 
             wp_enqueue_style(
                 'inesonic-speedsentry-styles',
-                \Inesonic\css_url('inesonic-speedsentry-styles'),
+                self::css_url('inesonic-speedsentry-styles', false),
                 array(),
                 null
             );
@@ -137,7 +133,7 @@ namespace Inesonic\SpeedSentry;
             if (array_key_exists('pause', $_POST)) {
                 $pause = ($_POST['pause'] != 'false' && $_POST['pause'] != '0');
                 if ($this->rest_api->customerPause($pause)) {
-                    $response = array('status', 'OK', 'post' => $_POST);
+                    $response = array('status', 'OK');
                 } else {
                     $response = array('status', 'failed');
                 }

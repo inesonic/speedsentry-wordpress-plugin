@@ -16,14 +16,11 @@
  */
 
 namespace Inesonic\SpeedSentry;
-    require_once dirname(__FILE__) . '/helpers.php';
-    require_once dirname(__FILE__) . '/signup-handler.php';
-    require_once dirname(__FILE__) . '/rest-api-v1.php';
 
     /**
      * Class that broadcasts capabilities information to the application at periodic intervals.
      */
-    class Capabilities {
+    class Capabilities extends Helpers {
         /**
          * Static method that is triggered when the plug-in is activated.
          *
@@ -45,10 +42,7 @@ namespace Inesonic\SpeedSentry;
          *
          * \param $signup_handler The customer signup handler.
          */
-        public function __construct(
-                \Inesonic\RestApiV1                 $rest_api,
-                \Inesonic\SpeedSentry\SignupHandler $signup_handler
-            ) {
+        public function __construct(RestApiV1 $rest_api, SignupHandler $signup_handler) {
             $this->rest_api = $rest_api;
             $this->signup_handler = $signup_handler;
 
@@ -71,7 +65,7 @@ namespace Inesonic\SpeedSentry;
 
             wp_enqueue_script(
                 'inesonic-speedsentry-broadcast-capabilities',
-                \Inesonic\javascript_url('broadcast-capabilities'),
+                self::javascript_url('broadcast-capabilities', false),
                 array('jquery'),
                 null,
                 true

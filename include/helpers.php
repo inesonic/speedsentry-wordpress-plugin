@@ -15,61 +15,88 @@
  ***********************************************************************************************************************
  */
 
-namespace Inesonic;
+namespace Inesonic\SpeedSentry;
     /**
-     * Flag indicating if we should use the un-minified versions of our JavaScript and CSS in order to perform
-     * debugging.
+     * Trivial class that provides a small number of useful static methods.
      */
-    const DEBUG_JAVASCRIPT = false;
+    class Helpers {
+        /**
+         * Flag indicating if we should use the un-minified versions of our JavaScript and CSS in order to perform
+         * debugging.
+         */
+        const DEBUG_JAVASCRIPT = false;
 
-    /**
-     * Function that obtains the correct JavaScript URL based on a JavaScript module name.
-     *
-     * \param $module_name The name of the JavaScript module to be fetched.
-     *
-     * \return Returns the requested JavaScript URL.
-     */
-    function javascript_url(string $module_name) {
-        if (DEBUG_JAVASCRIPT) {
-            $unminified_file = dirname(__FILE__) . '/assets/js/' . $module_name . '.js';
-            if (file_exists($unminified_file)) {
-                $extension = '.js';
+        /**
+         * Static method that obtains the correct JavaScript URL based on a JavaScript module name.
+         *
+         * \param $module_name  The name of the JavaScript module to be fetched.
+         *
+         * \param $under_parent If true, then the Javascript is under the parent directory.  If false, then the
+         *                      Javascript is under this directory.
+         *
+         * \return Returns the requested JavaScript URL.
+         */
+        static public function javascript_url(string $module_name, bool $under_parent) {
+            if ($under_parent) {
+                $d = dirname(__DIR__);
+                $u = plugin_dir_url(__DIR__);
+            } else {
+                $d = dirname(__FILE__);
+                $u = plugin_dir_url(__FILE__);
             }
-            else {
-                $extension = '.min.js';
+    
+            if (self::DEBUG_JAVASCRIPT) {
+                $unminified_file = $d . '/assets/js/' . $module_name . '.js';
+                if (file_exists($unminified_file)) {
+                    $extension = '.js';
+                }
+                else {
+                    $extension = '.min.js';
+                }
+            } else {
+                $minified_file = $d . '/assets/js/' . $module_name . '.min.js';
+                if (file_exists($minified_file)) {
+                    $extension = '.min.js';
+                }
+                else {
+                    $extension = '.js';
+                }
             }
-        } else {
-            $minified_file = dirname(__FILE__) . '/assets/js/' . $module_name . '.min.js';
-            if (file_exists($minified_file)) {
-                $extension = '.min.js';
-            }
-            else {
-                $extension = '.js';
-            }
+    
+            return $u . 'assets/js/' . $module_name . $extension;
         }
 
-        return plugin_dir_url(__FILE__) . 'assets/js/' . $module_name . $extension;
-    }
-
-    /**
-     * Function that obtains the correct CSS URL based on a CSS module name.
-     *
-     * \param $module_name The name of the JavaScript module to be fetched.
-     *
-     * \return Returns the requested JavaScript URL.
-     */
-    function css_url(string $module_name) {
-        if (DEBUG_JAVASCRIPT) {
-            $extension = '.css';
-        } else {
-            $minified_file = dirname(__FILE__) . '/assets/css/' . $module_name . '.min.css';
-            if (file_exists($minified_file)) {
-                $extension = '.min.css';
+        /**
+         * Function that obtains the correct CSS URL based on a CSS module name.
+         *
+         * \param $module_name The name of the JavaScript module to be fetched.
+         *
+         * \param $under_parent If true, then the Javascript is under the parent directory.  If false, then the
+         *                      Javascript is under this directory.
+         *
+         * \return Returns the requested JavaScript URL.
+         */
+        static public function css_url(string $module_name, bool $under_parent) {
+            if ($under_parent) {
+                $d = dirname(__DIR__);
+                $u = plugin_dir_url(__DIR__);
+            } else {
+                $d = dirname(__FILE__);
+                $u = plugin_dir_url(__FILE__);
             }
-            else {
+    
+            if (self::DEBUG_JAVASCRIPT) {
                 $extension = '.css';
+            } else {
+                $minified_file = $d . '/assets/css/' . $module_name . '.min.css';
+                if (file_exists($minified_file)) {
+                    $extension = '.min.css';
+                }
+                else {
+                    $extension = '.css';
+                }
             }
+    
+            return $u . 'assets/css/' . $module_name . $extension;
         }
-
-        return plugin_dir_url(__FILE__) . 'assets/css/' . $module_name . $extension;
     }

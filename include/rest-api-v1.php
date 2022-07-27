@@ -18,10 +18,7 @@
  ******************************************************************************
  */
 
-namespace Inesonic;
-
-    require_once dirname(__FILE__) . '/options.php';
-
+namespace Inesonic\SpeedSentry;
     /**
      * Class that encapsulates the Inesonic REST API.
      */
@@ -143,6 +140,61 @@ namespace Inesonic;
         const CUSTOMER_PAUSE_ROUTE = '/v1/customer/pause';
 
         /**
+         * Route for the resource/available function.
+         */
+        const RESOURCE_AVAILABLE_ROUTE = '/v1/resource/available';
+
+        /**
+         * Route for the resource/create function.
+         */
+        const RESOURCE_CREATE_ROUTE = '/v1/resource/create';
+
+        /**
+         * Route for the resource/list function.
+         */
+        const RESOURCE_LIST_ROUTE = '/v1/resource/list';
+
+        /**
+         * Route for the resource/plot function.
+         */
+        const RESOURCE_PLOT_ROUTE = '/v1/resource/plot';
+
+        /**
+         * Event ID for transaction customer events.
+         */
+        const TRANSACTION_EVENT = 11;
+
+        /**
+         * Event ID for customer inquiry events.
+         */
+        const INQUIRY = 12;
+
+        /**
+         * Event ID for customer support request events.
+         */
+        const SUPPORT_REQUEST = 13;
+
+        /**
+         * Event ID for customer storage limit reached events.
+         */
+        const STORAGE_LIMIT_REACHED = 14;
+        
+        /**
+         * CPU usage value type.
+         */
+        const CPU_VALUE_TYPE = 0;
+
+        /**
+         * Memory value type.
+         */
+        const MEMORY_VALUE_TYPE = 1;
+
+        /**
+         * Storage value type.
+         */
+        const STORAGE_VALUE_TYPE = 2;
+        
+        /**
          * Constructor
          *
          * \param $customer_identifier The identifier you should use as your
@@ -173,12 +225,6 @@ namespace Inesonic;
             $this->timeout = self::DEFAULT_TIMEOUT;
             $this->time_delta = $default_time_delta;
             $this->time_delta_callback = null;
-
-            if (function_exists('wp_remote_post')) {
-                $this->use_wordpress_functions = true;
-            } else {
-                $this->use_wordpress_functions = false;
-            }
         }
 
         /**
@@ -420,17 +466,17 @@ namespace Inesonic;
          *        :align: center
          *        :widths: 20 10 80
          *
-         *        +--------------------------+------+-----------------------------------------------------------------+
-         *        | Key                      | Type | Holds                                                           |
-         *        +==========================+======+=================================================================+
-         *        | host_scheme_id           | int  | The internal ID used to reference this host.                    |
-         *        +--------------------------+------+-----------------------------------------------------------------+
-         *        | ssl_expiration_timestamp | int  | The Unix timestamp indicating when the SSL certificate for this |
-         *        |                          |      | host is going to expire.  A value of 0 is provided if there is  |
-         *        |                          |      | no certificate or the data has not yet been read.               |
-         *        +--------------------------+------+-----------------------------------------------------------------+
-         *        | url                      | str  | The authority for this host.                                    |
-         *        +--------------------------+------+-----------------------------------------------------------------+
+         *        +--------------------------+--------+---------------------------------------------------------------+
+         *        | Key                      | Type   | Holds                                                         |
+         *        +==========================+========+===============================================================+
+         *        | host_scheme_id           | int    | The internal ID used to reference this host.                  |
+         *        +--------------------------+--------+---------------------------------------------------------------+
+         *        | ssl_expiration_timestamp | int    | The Unix timestamp indicating when the SSL certificate for    |
+         *        |                          |        | this host is going to expire.  A value of 0 is provided if    |
+         *        |                          |        | there is no certificate or the data has not yet been read.    |
+         *        +--------------------------+--------+---------------------------------------------------------------+
+         *        | url                      | string | The authority for this host.                                  |
+         *        +--------------------------+--------+---------------------------------------------------------------+
          *
          * \endrst
          */
@@ -500,74 +546,77 @@ namespace Inesonic;
          *        :align: center
          *        :widths: 20 10 80
          *
-         *        +--------------------+-------+------------------------------+
-         *        | Key                | Type  | Holds                        |
-         *        +====================+=======+==============================+
-         *        | monitor_id         | int   | The ID of the requested      |
-         *        |                    |       | monitor.                     |
-         *        +--------------------+-------+------------------------------+
-         *        | host_scheme_id     | int   | The host/scheme ID of the    |
-         *        |                    |       | server associated with this  |
-         *        |                    |       | monitor.                     |
-         *        +--------------------+-------+------------------------------+
-         *        | path               | str   | The path under the           |
-         *        |                    |       | host/scheme to this monitor. |
-         *        +--------------------+-------+------------------------------+
-         *        | user_ordering      | int   | An integer value starting    |
-         *        |                    |       | from 0 indicating the        |
-         *        |                    |       | position of this monitor in  |
-         *        |                    |       | the Inesonic Account         |
-         *        |                    |       | Settings page.               |
-         *        +--------------------+-------+------------------------------+
-         *        | method             | str   | A string holding the HTTP    |
-         *        |                    |       | method or verb used to       |
-         *        |                    |       | access the page or endpoint. |
-         *        |                    |       | supported values are:        |
-         *        |                    |       |                              |
-         *        |                    |       | * ``get``                    |
-         *        |                    |       | * ``head``                   |
-         *        |                    |       | * ``post``                   |
-         *        |                    |       | * ``put``                    |
-         *        |                    |       | * ``delete``                 |
-         *        |                    |       | * ``options``                |
-         *        |                    |       | * ``patch``                  |
-         *        +--------------------+-------+------------------------------+
-         *        | content_check_mode | str   | A string holding the desired |
-         *        |                    |       | content check mode.          |
-         *        |                    |       | Supported values are:        |
-         *        |                    |       |                              |
-         *        |                    |       | * ``no_check``               |
-         *        |                    |       | * ``content_match``          |
-         *        |                    |       | * ``all_keywords``           |
-         *        |                    |       | * ``any_keywords``           |
-         *        +--------------------+-------+------------------------------+
-         *        | keywords           | array | An array holding the         |
-         *        |                    |       | keywords to check for.  Each |
-         *        |                    |       | keyword will be base-64      |
-         *        |                    |       | encoded as per RFC 4648.     |
-         *        +--------------------+-------+------------------------------+
-         *        | user_agent         | str   | Value used with POST, PUT,   |
-         *        |                    |       | PATCH, and DELETE.           |
-         *        |                    |       | Indicates the User-Agent     |
-         *        |                    |       | string to report in the      |
-         *        |                    |       | request header.              |
-         *        +--------------------+-------+------------------------------+
-         *        | content_type       | str   | Value used only with POST,   |
-         *        |                    |       | PUT, PATCH, and DELETE.      |
-         *        |                    |       | Value indicates the          |
-         *        |                    |       | Content-Type to report in    |
-         *        |                    |       | the request header.          |
-         *        |                    |       | Supported values are listed  |
-         *        |                    |       | in                           |
-         *        |                    |       | :numref:`PHP Content Type`   |
-         *        +--------------------+-------+------------------------------+
-         *        | post_content       | str   | Value used only with POST,   |
-         *        |                    |       | PUT, PATCH, and DELETE.      |
-         *        |                    |       | Value contains the content   |
-         *        |                    |       | sent in the request body.    |
-         *        |                    |       | The supplied data is base-64 |
-         *        |                    |       | encoded as per RFC 4648.     |
-         *        +--------------------+-------+------------------------------+
+         *        +--------------------+--------+-----------------------------+
+         *        | Key                | Type   | Holds                       |
+         *        +====================+========+=============================+
+         *        | monitor_id         | int    | The ID of the requested     |
+         *        |                    |        | monitor.                    |
+         *        +--------------------+--------+-----------------------------+
+         *        | host_scheme_id     | int    | The host/scheme ID of the   |
+         *        |                    |        | server associated with this |
+         *        |                    |        | monitor.                    |
+         *        +--------------------+--------+-----------------------------+
+         *        | path               | string | The path under the          |
+         *        |                    |        | host/scheme to this         |
+         *        |                    |        | monitor                     |
+         *        +--------------------+--------+-----------------------------+
+         *        | user_ordering      | int    | An integer value starting   |
+         *        |                    |        | from 0 indicating the       |
+         *        |                    |        | position of this monitor in |
+         *        |                    |        | the Inesonic Account        |
+         *        |                    |        | Settings page.              |
+         *        +--------------------+--------+-----------------------------+
+         *        | method             | string | A string holding the HTTP   |
+         *        |                    |        | method or verb used to      |
+         *        |                    |        | access the page or          |
+         *        |                    |        | endpoint supported values   |
+         *        |                    |        | are:                        |
+         *        |                    |        |                             |
+         *        |                    |        | * ``get``                   |
+         *        |                    |        | * ``head``                  |
+         *        |                    |        | * ``post``                  |
+         *        |                    |        | * ``put``                   |
+         *        |                    |        | * ``delete``                |
+         *        |                    |        | * ``options``               |
+         *        |                    |        | * ``patch``                 |
+         *        +--------------------+--------+-----------------------------+
+         *        | content_check_mode | string | A string holding the        |
+         *        |                    |        | desired content check mode. |
+         *        |                    |        | Supported values are:       |
+         *        |                    |        |                             |
+         *        |                    |        | * ``no_check``              |
+         *        |                    |        | * ``content_match``         |
+         *        |                    |        | * ``all_keywords``          |
+         *        |                    |        | * ``any_keywords``          |
+         *        +--------------------+--------+-----------------------------+
+         *        | keywords           | array  | An array holding the        |
+         *        |                    |        | keywords to check for. Each |
+         *        |                    |        | keyword will be base-64     |
+         *        |                    |        | encoded as per RFC 4648.    |
+         *        +--------------------+--------+-----------------------------+
+         *        | user_agent         | string | Value used with POST, PUT,  |
+         *        |                    |        | PATCH, and DELETE.          |
+         *        |                    |        | Indicates the User-Agent    |
+         *        |                    |        | string to report in the     |
+         *        |                    |        | request header.             |
+         *        +--------------------+--------+-----------------------------+
+         *        | content_type       | string | Value used only with POST,  |
+         *        |                    |        | PUT, PATCH, and DELETE.     |
+         *        |                    |        | Value indicates the         |
+         *        |                    |        | Content-Type to report in   |
+         *        |                    |        | the request header.         |
+         *        |                    |        | Supported values are listed |
+         *        |                    |        | in                          |
+         *        |                    |        | :numref:`PHP Content Type`  |
+         *        +--------------------+--------+-----------------------------+
+         *        | post_content       | string | Value used only with POST,  |
+         *        |                    |        | PUT, PATCH, and DELETE.     |
+         *        |                    |        | Value contains the content  |
+         *        |                    |        | sent in the request body.   |
+         *        |                    |        | The supplied data is        |
+         *        |                    |        | base-64 encoded as per      |
+         *        |                    |        | RFC-4648.                   |
+         *        +--------------------+--------+-----------------------------+
          *
          *     .. tabularcolumns:: |p{0.4 in}|p{1.8 in}|
          *     .. _PHP Content Type:
@@ -647,78 +696,80 @@ namespace Inesonic;
          *        :align: center
          *        :widths: 20 10 80
          *
-         *        +--------------------+-------+------------------------------+
-         *        | Key                | Type  | Holds                        |
-         *        +====================+=======+==============================+
-         *        | monitor_id         | int   | The ID of the requested      |
-         *        |                    |       | monitor.                     |
-         *        +--------------------+-------+------------------------------+
-         *        | host_scheme_id     | int   | The host/scheme ID of the    |
-         *        |                    |       | server associated with this  |
-         *        |                    |       | monitor.                     |
-         *        +--------------------+-------+------------------------------+
-         *        | path               | str   | The path under the           |
-         *        |                    |       | host/scheme to this monitor. |
-         *        +--------------------+-------+------------------------------+
-         *        | url                | str   | The full URL used to access  |
-         *        |                    |       | the monitor.                 |
-         *        +--------------------+-------+------------------------------+
-         *        | user_ordering      | int   | An integer value starting    |
-         *        |                    |       | from 0 indicating the        |
-         *        |                    |       | position of this monitor in  |
-         *        |                    |       | the Inesonic Account         |
-         *        |                    |       | Settings page.               |
-         *        +--------------------+-------+------------------------------+
-         *        | method             | str   | A string holding the HTTP    |
-         *        |                    |       | method or verb used to       |
-         *        |                    |       | access the page or endpoint. |
-         *        |                    |       | supported values are:        |
-         *        |                    |       |                              |
-         *        |                    |       | * ``get``                    |
-         *        |                    |       | * ``head``                   |
-         *        |                    |       | * ``post``                   |
-         *        |                    |       | * ``put``                    |
-         *        |                    |       | * ``delete``                 |
-         *        |                    |       | * ``options``                |
-         *        |                    |       | * ``patch``                  |
-         *        +--------------------+-------+------------------------------+
-         *        | content_check_mode | str   | A string holding the desired |
-         *        |                    |       | content check mode.          |
-         *        |                    |       | Supported values are:        |
-         *        |                    |       |                              |
-         *        |                    |       | * ``no_check``               |
-         *        |                    |       | * ``content_match``          |
-         *        |                    |       | * ``all_keywords``           |
-         *        |                    |       | * ``any_keywords``           |
-         *        +--------------------+-------+------------------------------+
-         *        | keywords           | array | An array holding the         |
-         *        |                    |       | keywords to check for.  Each |
-         *        |                    |       | keyword will be base-64      |
-         *        |                    |       | encoded as per RFC 4648.     |
-         *        +--------------------+-------+------------------------------+
-         *        | user_agent         | str   | Value used with POST, PUT,   |
-         *        |                    |       | PATCH, and DELETE.           |
-         *        |                    |       | Indicates the User-Agent     |
-         *        |                    |       | string to report in the      |
-         *        |                    |       | request header.              |
-         *        +--------------------+-------+------------------------------+
-         *        | content_type       | str   | Value used only with POST,   |
-         *        |                    |       | PUT, PATCH, and DELETE.      |
-         *        |                    |       | Value indicates the          |
-         *        |                    |       | Content-Type to report in    |
-         *        |                    |       | the request header.          |
-         *        |                    |       | Supported values are listed  |
-         *        |                    |       | in                           |
-         *        |                    |       | :numref:`PHP Content Type`   |
-         *        +--------------------+-------+------------------------------+
-         *        | post_content       | str   | Value used only with POST,   |
-         *        |                    |       | PUT, PATCH, and DELETE.      |
-         *        |                    |       | DELETE.  Value contains the  |
-         *        |                    |       | content sent in the request  |
-         *        |                    |       | body.  The supplied data is  |
-         *        |                    |       | base-64 encoded as per RFC   |
-         *        |                    |       | 4648.                        |
-         *        +--------------------+-------+------------------------------+
+         *        +--------------------+--------+-----------------------------+
+         *        | Key                | Type   | Holds                       |
+         *        +====================+========+=============================+
+         *        | monitor_id         | int    | The ID of the requested     |
+         *        |                    |        | monitor.                    |
+         *        +--------------------+--------+-----------------------------+
+         *        | host_scheme_id     | int    | The host/scheme ID of the   |
+         *        |                    |        | server associated with this |
+         *        |                    |        | monitor.                    |
+         *        +--------------------+--------+-----------------------------+
+         *        | path               | string | The path under the          |
+         *        |                    |        | host/scheme to this         |
+         *        |                    |        | monitor.                    |
+         *        +--------------------+--------+-----------------------------+
+         *        | url                | string | The full URL used to access |
+         *        |                    |        | the monitor.                |
+         *        +--------------------+--------+-----------------------------+
+         *        | user_ordering      | int    | An integer value starting   |
+         *        |                    |        | from 0 indicating the       |
+         *        |                    |        | position of this monitor in |
+         *        |                    |        | the Inesonic Account        |
+         *        |                    |        | Settings page.              |
+         *        +--------------------+--------+-----------------------------+
+         *        | method             | string | A string holding the HTTP   |
+         *        |                    |        | method or verb used to      |
+         *        |                    |        | access the page or          |
+         *        |                    |        | endpoint supported values   |
+         *        |                    |        | are:                        |
+         *        |                    |        |                             |
+         *        |                    |        | * ``get``                   |
+         *        |                    |        | * ``head``                  |
+         *        |                    |        | * ``post``                  |
+         *        |                    |        | * ``put``                   |
+         *        |                    |        | * ``delete``                |
+         *        |                    |        | * ``options``               |
+         *        |                    |        | * ``patch``                 |
+         *        +--------------------+--------+-----------------------------+
+         *        | content_check_mode | string | A string holding the        |
+         *        |                    |        | desired content check mode. |
+         *        |                    |        | Supported values are:       |
+         *        |                    |        |                             |
+         *        |                    |        | * ``no_check``              |
+         *        |                    |        | * ``content_match``         |
+         *        |                    |        | * ``all_keywords``          |
+         *        |                    |        | * ``any_keywords``          |
+         *        +--------------------+--------+-----------------------------+
+         *        | keywords           | array  | An array holding the        |
+         *        |                    |        | keywords to check for. Each |
+         *        |                    |        | keyword will be base-64     |
+         *        |                    |        | encoded as per RFC-4648.    |
+         *        +--------------------+--------+-----------------------------+
+         *        | user_agent         | string | Value used with POST, PUT,  |
+         *        |                    |        | PATCH, and DELETE.          |
+         *        |                    |        | Indicates the User-Agent    |
+         *        |                    |        | string to report in the     |
+         *        |                    |        | request header.             |
+         *        +--------------------+--------+-----------------------------+
+         *        | content_type       | string | Value used only with POST,  |
+         *        |                    |        | PUT, PATCH, and DELETE.     |
+         *        |                    |        | Value indicates the         |
+         *        |                    |        | Content-Type to report in   |
+         *        |                    |        | the request header.         |
+         *        |                    |        | Supported values are listed |
+         *        |                    |        | in                          |
+         *        |                    |        | :numref:`PHP Content Type`  |
+         *        +--------------------+--------+-----------------------------+
+         *        | post_content       | string | Value used only with POST,  |
+         *        |                    |        | PUT, PATCH, and DELETE.     |
+         *        |                    |        | DELETE.  Value contains the |
+         *        |                    |        | content sent in the request |
+         *        |                    |        | body.  The supplied data is |
+         *        |                    |        | base-64 encoded as per      |
+         *        |                    |        | RFC-4648.                   |
+         *        +--------------------+--------+-----------------------------+
          *
          * \endrst
          */
@@ -758,51 +809,52 @@ namespace Inesonic;
          *        :align: center
          *        :widths: 20 10 20 80
          *
-         *        +--------------------+-------+------------+---------------------------------------------------------+
-         *        | Key                | Type  | Default    | Function                                                |
-         *        +====================+=======+============+=========================================================+
-         *        | uri                | str   | -required- | Either a full URL with a host and scheme or a path      |
-         *        |                    |       |            | indicating the location to be monitored.  If just a     |
-         *        |                    |       |            | path is provided then the host/scheme from the previous |
-         *        |                    |       |            | monitor, based on user ordering, will be used.          |
-         *        +--------------------+-------+------------+---------------------------------------------------------+
-         *        | method             | str   | 'get'      | The HTTP method used to access the endpoint.  Specify   |
-         *        |                    |       |            | one of:                                                 |
-         *        |                    |       |            |                                                         |
-         *        |                    |       |            | * ``get``                                               |
-         *        |                    |       |            | * ``head``                                              |
-         *        |                    |       |            | * ``post``                                              |
-         *        |                    |       |            | * ``put``                                               |
-         *        |                    |       |            | * ``delete``                                            |
-         *        |                    |       |            | * ``options``                                           |
-         *        |                    |       |            | * ``patch``                                             |
-         *        |                    |       |            |                                                         |
-         *        |                    |       |            | If not specified, then 'get' is assumed.                |
-         *        +--------------------+-------+------------+---------------------------------------------------------+
-         *        | content_check_mode | str   | 'no_check' | The desired content check mode.  Supported values are:  |
-         *        |                    |       |            |                                                         |
-         *        |                    |       |            | * ``no_check``                                          |
-         *        |                    |       |            | * ``content_match``                                     |
-         *        |                    |       |            | * ``all_keywords``                                      |
-         *        |                    |       |            | * ``any_keywords``                                      |
-         *        |                    |       |            |                                                         |
-         *        |                    |       |            | If not specified, then 'no_check' is assumed.           |
-         *        +--------------------+-------+------------+---------------------------------------------------------+
-         *        | keywords           | array | array()    | A list of keywords to check for.  Each keyword should   |
-         *        |                    |       |            | be base-64 encoded as per RFC 4648.                     |
-         *        +--------------------+-------+------------+---------------------------------------------------------+
-         *        | post_content_type  | str   | 'text'     | The post content type to provide in the POST header.    |
-         *        |                    |       |            | Supported values are listed in                          |
-         *        |                    |       |            | :numref:`PHP Content Type`.  If not specified, then     |
-         *        |                    |       |            | 'text' is assumed.                                      |
-         *        +--------------------+-------+------------+---------------------------------------------------------+
-         *        | post_user_agent    | str   | ''         | The user agent to report in the post header.  If not    |
-         *        |                    |       |            | specified or an empty string, then an default           |
-         *        |                    |       |            | User-Agent string will be reported.                     |
-         *        +--------------------+-------+------------+---------------------------------------------------------+
-         *        | post_content       | str   | ''         | The post content to be sent.  Value should be base-64   |
-         *        |                    |       |            | encoded as per RFC 4648.                                |
-         *        +--------------------+-------+------------+---------------------------------------------------------+
+         *        +--------------------+--------+------------+--------------------------------------------------------+
+         *        | Key                | Type   | Default    | Function                                               |
+         *        +====================+========+============+========================================================+
+         *        | uri                | string | -required- | Either a full URL with a host and scheme or a path     |
+         *        |                    |        |            | indicating the location to be monitored.  If just a    |
+         *        |                    |        |            | path is provided then the host/scheme from the         |
+         *        |                    |        |            | previous monitor, based on user ordering, will be      |
+         *        |                    |        |            | used.                                                  |
+         *        +--------------------+--------+------------+--------------------------------------------------------+
+         *        | method             | string | 'get'      | The HTTP method used to access the endpoint.  Specify  |
+         *        |                    |        |            | one of:                                                |
+         *        |                    |        |            |                                                        |
+         *        |                    |        |            | * ``get``                                              |
+         *        |                    |        |            | * ``head``                                             |
+         *        |                    |        |            | * ``post``                                             |
+         *        |                    |        |            | * ``put``                                              |
+         *        |                    |        |            | * ``delete``                                           |
+         *        |                    |        |            | * ``options``                                          |
+         *        |                    |        |            | * ``patch``                                            |
+         *        |                    |        |            |                                                        |
+         *        |                    |        |            | If not specified, then 'get' is assumed.               |
+         *        +--------------------+--------+------------+--------------------------------------------------------+
+         *        | content_check_mode | string | 'no_check' | The desired content check mode.  Supported values are: |
+         *        |                    |        |            |                                                        |
+         *        |                    |        |            | * ``no_check``                                         |
+         *        |                    |        |            | * ``content_match``                                    |
+         *        |                    |        |            | * ``all_keywords``                                     |
+         *        |                    |        |            | * ``any_keywords``                                     |
+         *        |                    |        |            |                                                        |
+         *        |                    |        |            | If not specified, then 'no_check' is assumed.          |
+         *        +--------------------+--------+------------+--------------------------------------------------------+
+         *        | keywords           | array  | array()    | A list of keywords to check for.  Each keyword should  |
+         *        |                    |        |            | be base-64 encoded as per RFC 4648.                    |
+         *        +--------------------+--------+------------+--------------------------------------------------------+
+         *        | post_content_type  | string | 'text'     | The post content type to provide in the POST header.   |
+         *        |                    |        |            | Supported values are listed in                         |
+         *        |                    |        |            | :numref:`PHP Content Type`.  If not specified, then    |
+         *        |                    |        |            | 'text' is assumed.                                     |
+         *        +--------------------+--------+------------+--------------------------------------------------------+
+         *        | post_user_agent    | string | ''         | The user agent to report in the post header.  If not   |
+         *        |                    |        |            | specified or an empty string, then an default          |
+         *        |                    |        |            | User-Agent string will be reported.                    |
+         *        +--------------------+--------+------------+--------------------------------------------------------+
+         *        | post_content       | string | ''         | The post content to be sent.  Value should be base-64  |
+         *        |                    |        |            | encoded as per RFC 4648.                               |
+         *        +--------------------+--------+------------+--------------------------------------------------------+
          *
          * :return:
          *     Return an empty array on success.  On error, this method returns
@@ -900,37 +952,37 @@ namespace Inesonic;
          *        :align: center
          *        :widths: 15 10 80
          *
-         *        +------------+------+---------------------------------------+
-         *        | Key        | Type | Function                              |
-         *        +============+======+=======================================+
-         *        | event_id   | int  | The ID used to identify this event.   |
-         *        +------------+------+---------------------------------------+
-         *        | message    | str  | The type of event that occurred.      |
-         *        |            |      | Value will be one of:                 |
-         *        |            |      |                                       |
-         *        |            |      | * ``no_response``                     |
-         *        |            |      | * ``working``                         |
-         *        |            |      | * ``content_changed``                 |
-         *        |            |      | * ``keywords``                        |
-         *        |            |      | * ``ssl_certificate_expiring``        |
-         *        |            |      | * ``ssl_certificate_renewed``         |
-         *        |            |      | * ``custom_1``                        |
-         *        |            |      | * ``custom_2``                        |
-         *        |            |      | * ``custom_3``                        |
-         *        |            |      | * ``custom_4``                        |
-         *        |            |      | * ``custom_5``                        |
-         *        |            |      | * ``custom_6``                        |
-         *        |            |      | * ``custom_7``                        |
-         *        |            |      | * ``custom_8``                        |
-         *        |            |      | * ``custom_9``                        |
-         *        |            |      | * ``custom_10``                       |
-         *        +------------+------+---------------------------------------+
-         *        | monitor_id | int  | The monitor ID of the monitor that    |
-         *        |            |      | triggered the event.                  |
-         *        +------------+------+---------------------------------------+
-         *        | timestamp  | int  | The Unix timestamp indicating when    |
-         *        |            |      | the event occurred.                   |
-         *        +------------+------+---------------------------------------+
+         *        +------------+--------+-------------------------------------+
+         *        | Key        | Type   | Function                            |
+         *        +============+========+=====================================+
+         *        | event_id   | int    | The ID used to identify this event. |
+         *        +------------+--------+-------------------------------------+
+         *        | message    | string | The type of event that occurred.    |
+         *        |            |        | Value will be one of:               |
+         *        |            |        |                                     |
+         *        |            |        | * ``no_response``                   |
+         *        |            |        | * ``working``                       |
+         *        |            |        | * ``content_changed``               |
+         *        |            |        | * ``keywords``                      |
+         *        |            |        | * ``ssl_certificate_expiring``      |
+         *        |            |        | * ``ssl_certificate_renewed``       |
+         *        |            |        | * ``custom_1``                      |
+         *        |            |        | * ``custom_2``                      |
+         *        |            |        | * ``custom_3``                      |
+         *        |            |        | * ``custom_4``                      |
+         *        |            |        | * ``custom_5``                      |
+         *        |            |        | * ``custom_6``                      |
+         *        |            |        | * ``custom_7``                      |
+         *        |            |        | * ``custom_8``                      |
+         *        |            |        | * ``custom_9``                      |
+         *        |            |        | * ``custom_10``                     |
+         *        +------------+--------+-------------------------------------+
+         *        | monitor_id | int    | The monitor ID of the monitor that  |
+         *        |            |        | triggered the event.                |
+         *        +------------+--------+-------------------------------------+
+         *        | timestamp  | int    | The Unix timestamp indicating when  |
+         *        |            |        | the event occurred.                 |
+         *        +------------+--------+-------------------------------------+
          *
          * \endrst
          */
@@ -976,37 +1028,37 @@ namespace Inesonic;
          *        :align: center
          *        :widths: 15 10 80
          *
-         *        +------------+------+---------------------------------------+
-         *        | Key        | Type | Function                              |
-         *        +============+======+=======================================+
-         *        | event_id   | int  | The ID used to identify this event.   |
-         *        +------------+------+---------------------------------------+
-         *        | message    | str  | The type of event that occurred.      |
-         *        |            |      | Value will be one of:                 |
-         *        |            |      |                                       |
-         *        |            |      | * ``no_response``                     |
-         *        |            |      | * ``working``                         |
-         *        |            |      | * ``content_changed``                 |
-         *        |            |      | * ``keywords``                        |
-         *        |            |      | * ``ssl_certificate_expiring``        |
-         *        |            |      | * ``ssl_certificate_renewed``         |
-         *        |            |      | * ``custom_1``                        |
-         *        |            |      | * ``custom_2``                        |
-         *        |            |      | * ``custom_3``                        |
-         *        |            |      | * ``custom_4``                        |
-         *        |            |      | * ``custom_5``                        |
-         *        |            |      | * ``custom_6``                        |
-         *        |            |      | * ``custom_7``                        |
-         *        |            |      | * ``custom_8``                        |
-         *        |            |      | * ``custom_9``                        |
-         *        |            |      | * ``custom_10``                       |
-         *        +------------+------+---------------------------------------+
-         *        | monitor_id | int  | The monitor ID of the monitor that    |
-         *        |            |      | triggered the event.                  |
-         *        +------------+------+---------------------------------------+
-         *        | timestamp  | int  | The Unix timestamp indicating when    |
-         *        |            |      | the event occurred.                   |
-         *        +------------+------+---------------------------------------+
+         *        +------------+--------+-------------------------------------+
+         *        | Key        | Type   | Function                            |
+         *        +============+========+=====================================+
+         *        | event_id   | int    | The ID used to identify this event. |
+         *        +------------+--------+-------------------------------------+
+         *        | message    | string | The type of event that occurred.    |
+         *        |            |        | Value will be one of:               |
+         *        |            |        |                                     |
+         *        |            |        | * ``no_response``                   |
+         *        |            |        | * ``working``                       |
+         *        |            |        | * ``content_changed``               |
+         *        |            |        | * ``keywords``                      |
+         *        |            |        | * ``ssl_certificate_expiring``      |
+         *        |            |        | * ``ssl_certificate_renewed``       |
+         *        |            |        | * ``custom_1``                      |
+         *        |            |        | * ``custom_2``                      |
+         *        |            |        | * ``custom_3``                      |
+         *        |            |        | * ``custom_4``                      |
+         *        |            |        | * ``custom_5``                      |
+         *        |            |        | * ``custom_6``                      |
+         *        |            |        | * ``custom_7``                      |
+         *        |            |        | * ``custom_8``                      |
+         *        |            |        | * ``custom_9``                      |
+         *        |            |        | * ``custom_10``                     |
+         *        +------------+--------+-------------------------------------+
+         *        | monitor_id | int    | The monitor ID of the monitor that  |
+         *        |            |        | triggered the event.                |
+         *        +------------+--------+-------------------------------------+
+         *        | timestamp  | int    | The Unix timestamp indicating when  |
+         *        |            |        | the event occurred.                 |
+         *        +------------+--------+-------------------------------------+
          *
          * \endrst
          */
@@ -1047,9 +1099,9 @@ namespace Inesonic;
          * \return Returns true on success.  Returns false on error.
          */
         public function eventsCreate(
-                int $event_type,
-                str $message,
-                int $monitor_id = 0
+                int    $event_type,
+                string $message,
+                int    $monitor_id = 0
             ) {
             $request = array(
                 'type' => $event_type,
@@ -1376,64 +1428,64 @@ namespace Inesonic;
          *        :align: center
          *        :widths: 20 10 45 80
          *
-         *        +-----------------+-------+----------------------+--------------------------------------------------+
-         *        | Key             | Type  | Default Value        | Function                                         |
-         *        +=================+=======+======================+==================================================+
-         *        | plot_type       | str   | 'history'            | Indicates the desired type of plot.  Supported   |
-         *        |                 |       |                      | values are 'history' and 'histogram'.            |
-         *        +-----------------+-------+----------------------+--------------------------------------------------+
-         *        | host_scheme_id  | int   | -all-                | Indicates the plot should be limited to monitors |
-         *        |                 |       |                      | on this server.  This value is mutually          |
-         *        |                 |       |                      | exclusive with 'monitor_id'.                     |
-         *        +-----------------+-------+----------------------+--------------------------------------------------+
-         *        | monitor_id      | int   | -all-                | Indicates the plot should be limited to this     |
-         *        |                 |       |                      | monitor.  This value is mutually exclusive with  |
-         *        |                 |       |                      | 'host_scheme_id'.                                |
-         *        +-----------------+-------+----------------------+--------------------------------------------------+
-         *        | region_id       | int   | -all-                | Indicates the plot should be limited to one or   |
-         *        |                 |       |                      | more monitors in one region.                     |
-         *        +-----------------+-------+----------------------+--------------------------------------------------+
-         *        | start_timestamp | int   | 0                    | Indicates the plot should exclude values before  |
-         *        |                 |       |                      | this time.                                       |
-         *        +-----------------+-------+----------------------+--------------------------------------------------+
-         *        | end_timestamp   | int   | -now-                | Indicates the plot should exclude values after   |
-         *        |                 |       |                      | this time.                                       |
-         *        +-----------------+-------+----------------------+--------------------------------------------------+
-         *        | title           | str   | 'Latency Over Time'  | A UTF-8 encoded title to include in the plot.    |
-         *        +-----------------+-------+----------------------+--------------------------------------------------+
-         *        | x_axis_label    | str   | 'Date/Time'          | The UTF-8 encoded text for the X axis label.     |
-         *        +-----------------+-------+----------------------+--------------------------------------------------+
-         *        | y_axis_label    | str   | 'Latency (seconds)'  | The UTF-8 encoded text for the Y axis label.     |
-         *        +-----------------+-------+----------------------+--------------------------------------------------+
-         *        | date_format     | str   | 'MMM dd yyy - hh:mm' | The date format to apply to date/time fields.    |
-         *        |                 |       |                      | For details, see :ref:`Date Format Codes`.       |
-         *        +-----------------+-------+----------------------+--------------------------------------------------+
-         *        | title_font      | str   | -dafault-            | The title font to be used.   For details, see    |
-         *        |                 |       |                      | :ref:`Font Encoding`.                            |
-         *        +-----------------+-------+----------------------+--------------------------------------------------+
-         *        | axis_title_font | str   | -default-            | The font to use for axis title text.  For        |
-         *        |                 |       |                      | details, see :ref:`Font Encoding`.               |
-         *        +-----------------+-------+----------------------+--------------------------------------------------+
-         *        | axis_label_font | str   | -default-            | The font to use for axis labels.  For details,   |
-         *        |                 |       |                      | see :ref:`Font Encoding`.                        |
-         *        +-----------------+-------+----------------------+--------------------------------------------------+
-         *        | minimum_latency | float | 0                    | The minimum latency value to show.  Value is in  |
-         *        |                 |       |                      | seconds.                                         |
-         *        +-----------------+-------+----------------------+--------------------------------------------------+
-         *        | maximum_latency | float | auto-scale           | The maximum latency value to show.  Value is in  |
-         *        |                 |       |                      | seconds.                                         |
-         *        +-----------------+-------+----------------------+--------------------------------------------------+
-         *        | log_scale       | bool  | false                | A boolean value indicating if log scale should   |
-         *        |                 |       |                      | be used for the Y axis.  Only works for history  |
-         *        |                 |       |                      | plots.                                           |
-         *        +-----------------+-------+----------------------+--------------------------------------------------+
-         *        | width           | int   | 1024                 | The plot width, in pixels.                       |
-         *        +-----------------+-------+----------------------+--------------------------------------------------+
-         *        | height          | int   | 768                  | The plot height, in pixels.                      |
-         *        +-----------------+-------+----------------------+--------------------------------------------------+
-         *        | format          | str   | 'PNG'                | The returned data format, supported values are   |
-         *        |                 |       |                      | 'PNG', and 'JPG'.                                |
-         *        +-----------------+-------+----------------------+--------------------------------------------------+
+         *        +-----------------+--------+----------------------+-------------------------------------------------+
+         *        | Key             | Type   | Default Value        | Function                                        |
+         *        +=================+========+======================+=================================================+
+         *        | plot_type       | string | 'history'            | Indicates the desired type of plot.  Supported  |
+         *        |                 |        |                      | values are 'history' and 'histogram'.           |
+         *        +-----------------+--------+----------------------+-------------------------------------------------+
+         *        | host_scheme_id  | int    | -all-                | Indicates the plot should be limited to         |
+         *        |                 |        |                      | monitors on this server.  This value is         |
+         *        |                 |        |                      | mutually exclusive with 'monitor_id'.           |
+         *        +-----------------+--------+----------------------+-------------------------------------------------+
+         *        | monitor_id      | int    | -all-                | Indicates the plot should be limited to this    |
+         *        |                 |        |                      | monitor.  This value is mutually exclusive with |
+         *        |                 |        |                      | 'host_scheme_id'.                               |
+         *        +-----------------+--------+----------------------+-------------------------------------------------+
+         *        | region_id       | int    | -all-                | Indicates the plot should be limited to one or  |
+         *        |                 |        |                      | more monitors in one region.                    |
+         *        +-----------------+--------+----------------------+-------------------------------------------------+
+         *        | start_timestamp | int    | 0                    | Indicates the plot should exclude values before |
+         *        |                 |        |                      | this time.                                      |
+         *        +-----------------+--------+----------------------+-------------------------------------------------+
+         *        | end_timestamp   | int    | -now-                | Indicates the plot should exclude values after  |
+         *        |                 |        |                      | this time.                                      |
+         *        +-----------------+--------+----------------------+-------------------------------------------------+
+         *        | title           | string | 'Latency Over Time'  | A UTF-8 encoded title to include in the plot.   |
+         *        +-----------------+--------+----------------------+-------------------------------------------------+
+         *        | x_axis_label    | string | 'Date/Time'          | The UTF-8 encoded text for the X axis label.    |
+         *        +-----------------+--------+----------------------+-------------------------------------------------+
+         *        | y_axis_label    | string | 'Latency (seconds)'  | The UTF-8 encoded text for the Y axis label.    |
+         *        +-----------------+--------+----------------------+-------------------------------------------------+
+         *        | date_format     | string | 'MMM dd yyy - hh:mm' | The date format to apply to date/time fields.   |
+         *        |                 |        |                      | For details, see :ref:`Date Format Codes`.      |
+         *        +-----------------+--------+----------------------+-------------------------------------------------+
+         *        | title_font      | string | -dafault-            | The title font to be used.   For details, see   |
+         *        |                 |        |                      | :ref:`Font Encoding`.                           |
+         *        +-----------------+--------+----------------------+-------------------------------------------------+
+         *        | axis_title_font | string | -default-            | The font to use for axis title text.  For       |
+         *        |                 |        |                      | details, see :ref:`Font Encoding`.              |
+         *        +-----------------+--------+----------------------+-------------------------------------------------+
+         *        | axis_label_font | string | -default-            | The font to use for axis labels.  For details,  |
+         *        |                 |        |                      | see :ref:`Font Encoding`.                       |
+         *        +-----------------+--------+----------------------+-------------------------------------------------+
+         *        | minimum_latency | float  | 0                    | The minimum latency value to show.  Value is in |
+         *        |                 |        |                      | seconds.                                        |
+         *        +-----------------+--------+----------------------+-------------------------------------------------+
+         *        | maximum_latency | float  | auto-scale           | The maximum latency value to show.  Value is in |
+         *        |                 |        |                      | seconds.                                        |
+         *        +-----------------+------ --+----------------------+------------------------------------------------+
+         *        | log_scale       | bool   | false                | A boolean value indicating if log scale should  |
+         *        |                 |        |                      | be used for the Y axis.  Only works for history |
+         *        |                 |        |                      | plots.                                          |
+         *        +-----------------+--------+----------------------+-------------------------------------------------+
+         *        | width           | int    | 1024                 | The plot width, in pixels.                      |
+         *        +-----------------+--------+----------------------+-------------------------------------------------+
+         *        | height          | int    | 768                  | The plot height, in pixels.                     |
+         *        +-----------------+--------+----------------------+-------------------------------------------------+
+         *        | format          | string | 'PNG'                | The returned data format, supported values are  |
+         *        |                 |        |                      | 'PNG', and 'JPG'.                               |
+         *        +-----------------+--------+----------------------+-------------------------------------------------+
          *
          * :return:
          *     Returns an array holding the values listed in
@@ -1446,20 +1498,22 @@ namespace Inesonic;
          *        :align: center
          *        :widths: 18 10 80
          *
-         *        +--------------+------+-------------------------------------+
-         *        | Key          | Type | Contains                            |
-         *        +==============+======+=====================================+
-         *        | content_type | str  | The returned content type.  On      |
-         *        |              |      | success, 'image/png' or 'image/jpg' |
-         *        |              |      | is returned.  On failure,           |
-         *        |              |      | 'application/json' is returned.     |
-         *        +--------------+------+-------------------------------------+
-         *        | body         | str  | The returned payload.  On success,  |
-         *        |              |      | this will contain raw byte data     |
-         *        |              |      | holding the image.  On failure, the |
-         *        |              |      | body will contain a JSON encoded    |
-         *        |              |      | response explaining the failure.    |
-         *        +--------------+------+-------------------------------------+
+         *        +--------------+--------+-----------------------------------+
+         *        | Key          | Type   | Contains                          |
+         *        +==============+========+===================================+
+         *        | content_type | string | The returned content type.  On    |
+         *        |              |        | success, 'image/png' or           |
+         *        |              |        | 'image/jpg' is returned.  On      |
+         *        |              |        | failure, 'application/json' is    |
+         *        |              |        | returned.                         |
+         *        +--------------+--------+-----------------------------------+
+         *        | body         | string | The returned payload.  On         |
+         *        |              |        | success, this will contain raw    |
+         *        |              |        | byte data holding the image.  On  |
+         *        |              |        | failure, the body will contain a  |
+         *        |              |        | JSON encoded response explaining  |
+         *        |              |        | the failure.                      |
+         *        +--------------+--------+-----------------------------------+
          *
          * \endrst
          */
@@ -1490,6 +1544,254 @@ namespace Inesonic;
                    $response !== null
                 && array_key_exists('status', $response)
                 && $response['status'] == 'OK'
+            );
+        }
+
+        /**
+         * Method you can use to determine what resource data is available.
+         *
+         * \return Returns an array of value types holding data.  On failure,
+         *         null is returned.
+         */
+        public function resourceAvailable() {
+            $response = $this->postMessage(
+                array(),
+                self::RESOURCE_AVAILABLE_ROUTE
+            );
+
+            if ($response !== null                         &&
+                array_key_exists('status', $response)      &&
+                $response['status'] == 'OK'                &&
+                array_key_exists('value_types', $response)    ) {
+                $result = $response['value_types'];
+            } else {
+                $result = null;
+            }
+
+
+            return $result;
+        }
+
+        /**
+         * Method you can use to determine what resource data is available.
+         *
+         * \param[in] $value      The floating point value to be recorded.
+         *
+         * \param[in] $value_type The value type to record this value under.
+         *
+         * \param[in] $timestamp  The Unix timestamp indicating when the value
+         *                        was recorded.  A value of 0 indicates the
+         *                        current server timestamp.
+
+         * \return Returns true on success.  Returns false on error.
+         */
+        public function resourceCreate(
+                float $value,
+                int   $value_type = 0,
+                int   $timestamp = 0
+            ) {
+            $message = array('value' => $value);
+
+            if ($value_type > 0) {
+                $message['value_type'] = $value_type;
+            }
+
+
+            if ($timestamp != 0) {
+                $message['timestamp'] = $timestamp;
+            }
+
+            $response = $this->postMessage(
+                $message,
+                self::RESOURCE_CREATE_ROUTE
+            );
+
+            return (
+                   $response !== null
+                && array_key_exists('status', $response)
+                && $response['status'] == 'OK'
+            );
+        }
+
+        /**
+         * Method you can use to obtain resource data.
+         *
+         * \param[in] $value_type      The value type to obtain entries for.
+         *
+         * \param[in] $start_timestamp The starting Unix timestamp for the
+         *                             resource data.  A value of 0 indicates
+         *                             no starting timestamp.
+         *
+         * \param[in] $end_timestamp   The ending Unix timestamp for the
+         *                             resource data.  A value of 0 indicates
+         *                             no ending timestamp.
+         *
+         * \rst:leading-asterisk
+         *
+         * :return:
+         *     Returns an array holding the values listed in
+         *     :numref:`PHP Resource List Return Values`.  A null value will be
+         *     returned if a communication error occurs.
+         *
+         *     .. tabularcolumns:: |p{0.8 in}|p{0.4 in}|p{3.5 in}|
+         *     .. _PHP Resource List Return Values:
+         *     .. table:: resourceList Return Values
+         *        :align: center
+         *        :widths: 18 10 80
+         *
+         *        +--------------+-------+---------------------------------------+
+         *        | Key          | Type  | Contains                              |
+         *        +==============+=======+=======================================+
+         *        | value_type   | int   | The supplied value type.              |
+         *        +--------------+-------+---------------------------------------+
+         *        | resources    | array | An array holding the values stored    |
+         *        |              |       | for this resource.  Each entry is a   |
+         *        |              |       | dictionary holding the fields listed  |
+         *        |              |       | listed in                             |
+         *        |              |       | :numref:`PHP Resource List Resources` |
+         *        +--------------+-------+---------------------------------------+
+         *
+         *     .. tabularcolumns:: |p{0.8 in}|p{0.4 in}|p{3.5 in}|
+         *     .. _PHP Resource List Resources:
+         *     .. table:: resourceList Resource Values
+         *        :align: center
+         *        :widths: 18 10 80
+         *
+         *        +-----------+-------+--------------------------------------+
+         *        | Key       | Type  | Contains                             |
+         *        +===========+=======+======================================+
+         *        | value     | float | A previously recorded value.         |
+         *        +-----------+-------+--------------------------------------+
+         *        | timestamp | int   | The Unix timestamp indicating when   |
+         *        |           |       | the value was recorded.              |
+         *        +-----------+-------+--------------------------------------+
+         *
+         * \endrst
+         */
+        public function resourceList(
+                int $value_type,
+                int $start_timestamp = 0,
+                int $end_timestamp = 0
+            ) {
+            $message = array('value_type' => $value);
+
+            if ($start_timestmap > 0) {
+                $message['start_timestamp'] = $start_timestmap;
+            }
+
+            if ($end_timestmap > 0) {
+                $message['end_timestamp'] = $end_timestmap;
+            }
+
+            $response = $this->postMessage(
+                $message,
+                self::RESOURCE_LIST_ROUTE
+            );
+
+            if ($response !== null                    &&
+                array_key_exists('status', $response) &&
+                $response['status'] == 'OK'           &&
+                array_key_exists('data', $response)      ) {
+                $result = $response['data'];
+            } else {
+                $result = null;
+            }
+
+            return $result;
+        }
+
+        /**
+         * Method you can use to obtain a plot of resource data.
+         *
+         * \rst:leading-asterisk
+         *
+         * :param $settings:
+         *     The plot settings array.  This value supports a large number of
+         *     possible fields listed in
+         *     :numref:`PHP Resource Plot Parameters`.  Note that most
+         *     parameters are optional.  Reasonable default values will be used
+         *     for omitted parameters.
+         *
+         *     .. tabularcolumns:: |p{1.1 in}|p{0.4 in}|p{1.4 in}|p{1.6 in}|
+         *     .. _PHP Resource Plot Parameters:
+         *     .. table:: resourcePlot Parameters
+         *        :align: center
+         *        :widths: 20 10 45 80
+         *
+         *        +-----------------+--------+----------------------+-------------------------------------------------+
+         *        | Key             | Type   | Default Value        | Function                                        |
+         *        +=================+========+======================+=================================================+
+         *        | value_type      | int    | 0                    | Indicates the resource value type to be         |
+         *        |                 |        |                      | plotted.                                        |
+         *        +-----------------+--------+----------------------+-------------------------------------------------+
+         *        | start_timestamp | int    | 0                    | Indicates the plot should exclude values before |
+         *        |                 |        |                      | this time.                                      |
+         *        +-----------------+--------+----------------------+-------------------------------------------------+
+         *        | end_timestamp   | int    | -now-                | Indicates the plot should exclude values after  |
+         *        |                 |        |                      | this time.                                      |
+         *        +-----------------+--------+----------------------+-------------------------------------------------+
+         *        | scale_factor    | float  | 1                    | A scale factor to apply to the Y axis.          |
+         *        +-----------------+--------+----------------------+-------------------------------------------------+
+         *        | title           | string | 'Resource Over Time' | A UTF-8 encoded title to include in the plot.   |
+         *        +-----------------+--------+----------------------+-------------------------------------------------+
+         *        | x_axis_label    | string | 'Date/Time'          | The UTF-8 encoded text for the X axis label.    |
+         *        +-----------------+--------+----------------------+-------------------------------------------------+
+         *        | y_axis_label    | string | 'Value'              | The UTF-8 encoded text for the Y axis label.    |
+         *        +-----------------+--------+----------------------+-------------------------------------------------+
+         *        | date_format     | string | 'MMM dd yyy - hh:mm' | The date format to apply to date/time fields.   |
+         *        |                 |        |                      | For details, see :ref:`Date Format Codes`.      |
+         *        +-----------------+--------+----------------------+-------------------------------------------------+
+         *        | title_font      | string | -dafault-            | The title font to be used.   For details, see   |
+         *        |                 |        |                      | :ref:`Font Encoding`.                           |
+         *        +-----------------+--------+----------------------+-------------------------------------------------+
+         *        | axis_title_font | string | -default-            | The font to use for axis title text.  For       |
+         *        |                 |        |                      | details, see :ref:`Font Encoding`.              |
+         *        +-----------------+--------+----------------------+-------------------------------------------------+
+         *        | axis_label_font | string | -default-            | The font to use for axis labels.  For details,  |
+         *        |                 |        |                      | see :ref:`Font Encoding`.                       |
+         *        +-----------------+--------+----------------------+-------------------------------------------------+
+         *        | width           | int    | 1024                 | The plot width, in pixels.                      |
+         *        +-----------------+--------+----------------------+-------------------------------------------------+
+         *        | height          | int    | 768                  | The plot height, in pixels.                     |
+         *        +-----------------+--------+----------------------+-------------------------------------------------+
+         *        | format          | string | 'PNG'                | The returned data format, supported values are  |
+         *        |                 |        |                      | 'PNG', and 'JPG'.                               |
+         *        +-----------------+--------+----------------------+-------------------------------------------------+
+         *
+         * :return:
+         *     Returns an array holding the values listed in
+         *     :numref:`PHP Resource Plot Return Values`.  A null value will be
+         *     returned if a communication error occurs.
+         *
+         *     .. tabularcolumns:: |p{0.8 in}|p{0.4 in}|p{3.5 in}|
+         *     .. _PHP Latency Plot Return Values:
+         *     .. table:: latencyPlot Return Values
+         *        :align: center
+         *        :widths: 18 10 80
+         *
+         *        +--------------+--------+-----------------------------------+
+         *        | Key          | Type   | Contains                          |
+         *        +==============+========+===================================+
+         *        | content_type | string | The returned content type.  On    |
+         *        |              |        | success, 'image/png' or           |
+         *        |              |        | 'image/jpg' is returned.  On      |
+         *        |              |        | failure 'application/json' is     |
+         *        |              |        | returned.                         |
+         *        +--------------+--------+-----------------------------------+
+         *        | body         | string | The returned payload.  On         |
+         *        |              |        | success, this will contain raw    |
+         *        |              |        | byte data holding the image.  On  |
+         *        |              |        | failure, the body will contain a  |
+         *        |              |        | JSON encoded response explaining  |
+         *        |              |        | the failure.                      |
+         *        +--------------+--------+-----------------------------------+
+         *
+         * \endrst
+         */
+        public function resourcePlot(array $settings) {
+            return $this->postBinaryMessage(
+                $settings,
+                self::RESOURCE_PLOT_ROUTE
             );
         }
 
@@ -1596,103 +1898,38 @@ namespace Inesonic;
                 'content-length' => strlen($payload)
             );
 
-            if ($this->use_wordpress_functions) {
-                $response = wp_remote_post(
-                    self::INESONIC_AUTHORITY . $route,
-                    array(
-                        'body' => $payload,
-                        'timeout' => $this->timeout,
-                        'redirection' => 5,
-                        'httpversion' => 1,
-                        'blocking' => true,
-                        'headers' => $headers
-                    )
-                );
+            $response = wp_remote_post(
+                self::INESONIC_AUTHORITY . $route,
+                array(
+                    'body' => $payload,
+                    'timeout' => $this->timeout,
+                    'redirection' => 5,
+                    'httpversion' => 1,
+                    'blocking' => true,
+                    'headers' => $headers
+                )
+            );
 
-                if (!is_wp_error($response)) {
-                    $status_code = $response['response']['code'];
-                    if (array_key_exists('body', $response)) {
-                        $response_data = $response['body'];
-                    } else {
-                        $response_data = null;
-                    }
-
-                    $content_type = $response['headers']['content-type'];
-                    $result = array(
-                        'status' => $status_code,
-                        'reply' => $response_data,
-                        'content_type' => $content_type
-                    );
+            if (!is_wp_error($response)) {
+                $status_code = $response['response']['code'];
+                if (array_key_exists('body', $response)) {
+                    $response_data = $response['body'];
                 } else {
-                    $result = array(
-                        'status' => 0,
-                        'reply' => null,
-                        'content_type' => null
-                    );
+                    $response_data = null;
                 }
+
+                $content_type = $response['headers']['content-type'];
+                $result = array(
+                    'status' => $status_code,
+                    'reply' => $response_data,
+                    'content_type' => $content_type
+                );
             } else {
-                $header_string = '';
-                foreach ($headers as $k => $v) {
-                    $header_string .= $k . ": " . $v . "\r\n";
-                }
-
-                $http_response_header = array();
-                $response = @file_get_contents(
-                    self::INESONIC_AUTHORITY . $route,
-                    false,
-                    stream_context_create(
-                        array(
-                            'http' => array(
-                                'method' => 'POST',
-                                'header' => $header_string,
-                                'content' => $payload,
-                                'timeout' => self::DEFAULT_TIMEOUT
-                            )
-                        )
-                    )
+                $result = array(
+                    'status' => 0,
+                    'reply' => null,
+                    'content_type' => null
                 );
-
-                if (count($http_response_header) >= 1) {
-                    $status = intval(
-                        explode(" ", $http_response_header[0])[1]
-                    );
-
-                    if ($response !== false) {
-                        $headers = array();
-                        foreach($http_response_header as $header) {
-                            $index = strpos($header, ':');
-                            if ($index !== false) {
-                                $field = trim(substr($header, 0, $index));
-                                $value = trim(substr($header, $index + 1));
-                                $headers[strtolower($field)] = $value;
-                            }
-                        }
-
-                        if (array_key_exists('content-type', $headers)) {
-                            $content_type = $headers['content-type'];
-                        } else {
-                            $content_type = '';
-                        }
-
-                        $result = array(
-                            'status' => $status,
-                            'reply' => $response,
-                            'content_type' => $content_type
-                        );
-                    } else {
-                        $result = array(
-                            'status' => $status,
-                            'reply' => null,
-                            'content_type' => null
-                        );
-                    }
-                } else {
-                    $result = array(
-                        'status' => 0,
-                        'reply' => null,
-                        'content_type' => null
-                    );
-                }
             }
 
             return $result;
@@ -1719,56 +1956,21 @@ namespace Inesonic;
             $response_data = null;
             $url = self::INESONIC_AUTHORITY . self::TIME_DELTA_ROUTE;
 
-            if ($this->use_wordpress_functions) {
-                $response = wp_remote_post(
-                    $url,
-                    array(
-                        'body' => $json_payload,
-                        'timeout' => $this->timeout,
-                        'redirection' => 5,
-                        'httpversion' => 1,
-                        'blocking' => true,
-                        'headers' => $headers
-                    )
-                );
+            $response = wp_remote_post(
+                $url,
+                array(
+                    'body' => $json_payload,
+                    'timeout' => $this->timeout,
+                    'redirection' => 5,
+                    'httpversion' => 1,
+                    'blocking' => true,
+                    'headers' => $headers
+                )
+            );
 
-                if (!is_wp_error($response)) {
-                    if ($response['response']['code'] == 200) {
-                        $response_data = json_decode($response['body'], true);
-                    }
-                }
-            } else {
-                $header_string = '';
-                foreach ($headers as $k => $v) {
-                    $header_string .= $k . ": " . $v . "\r\n";
-                }
-
-                $http_response_header = array();
-                $response = file_get_contents(
-                    $url,
-                    false,
-                    stream_context_create(
-                        array(
-                            'http' => array(
-                                'method' => 'POST',
-                                'header' => $header_string,
-                                'content' => $json_payload,
-                                'timeout' => self::DEFAULT_TIMEOUT
-                            )
-                        )
-                    )
-                );
-
-                if ($response !== false) {
-                    if (count($http_response_header) >= 1) {
-                        $status = intval(
-                            explode(" ", $http_response_header[0])[1]
-                        );
-
-                        if ($status == 200) {
-                            $response_data = json_decode($response, true);
-                        }
-                    }
+            if (!is_wp_error($response)) {
+                if ($response['response']['code'] == 200) {
+                    $response_data = json_decode($response['body'], true);
                 }
             }
 
